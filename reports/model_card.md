@@ -4,7 +4,7 @@
 
 - Nome: Modelo de risco de não alfabetização - Fase 3
 - Versão: 1.0
-- Status: pipeline validado; estimador final depende da execução com dados reais
+- Status: treinado e avaliado na exportacao real de 2024
 - Classe positiva: estudante não alfabetizado
 - Unidade de inferência: estudante da rede municipal
 - Unidade de decisão recomendada: município
@@ -27,13 +27,16 @@ Desfecho de 2024 e contexto educacional, territorial e socioeconômico de 2023, 
 
 ## Avaliação
 
-Separação 60/20/20 por município. Seleção por PR-AUC na validação, limiar por F2 e avaliação única no teste. Métricas complementares: ROC-AUC, recall, precisão, balanced accuracy e Brier score.
+Separação 60/20/20 por município: 92.077 registros em treino, 35.869 em validação e 33.032 em teste, sem sobreposição territorial. A regressão logística com `C=0,3` foi selecionada por PR-AUC.
+
+No teste, ROC-AUC = 0,661, PR-AUC = 0,542 e Brier = 0,225. O ponto equilibrado usa limiar 0,515, precisão de 53,5%, recall de 49,4% e taxa de alertas de 36,6%. O ponto de triagem ampla usa limiar 0,230, recall de 95,0% e taxa de alertas de 88,8%.
 
 ## Riscos
 
 - viés de seleção associado à ausência na avaliação;
 - proxy territorial de desigualdades históricas;
 - menor estabilidade em municípios com poucos registros;
+- ausência de variação individual: os atributos desta versão são municipais;
 - drift entre edições;
 - interpretação causal indevida.
 
@@ -49,4 +52,3 @@ Separação 60/20/20 por município. Seleção por PR-AUC na validação, limiar
 ## Monitoramento recomendado
 
 Registrar por versão: período dos dados, cobertura, prevalência, modelo, limiar, PR-AUC, recall, Brier, taxa de alertas, diferenças por UF/região e distribuição dos atributos. Recalibrar quando houver degradação relevante ou mudança na avaliação.
-

@@ -2,7 +2,7 @@
 
 ## Antes de gravar
 
-Preencha apenas os campos entre colchetes usando `reports/resultados_automaticos.md`. Não use os números do modo `--demo`. Mostre no vídeo o PDF do relatório ou cinco slides simples com as imagens indicadas.
+Use o PDF do relatório ou cinco slides simples com as imagens indicadas. Os números abaixo já correspondem à execução real; só falta adaptar a saudação aos integrantes do grupo.
 
 ## 0:00-0:35 - Abertura e problema
 
@@ -26,25 +26,25 @@ Preencha apenas os campos entre colchetes usando `reports/resultados_automaticos
 
 **Tela:** `05_avaliacao_modelo.png` e tabela de métricas.
 
-> Os estudantes foram separados em treino, validação e teste na proporção aproximada de 60, 20 e 20 por cento. A separação foi feita por município, então uma localidade não aparece em mais de uma partição. Comparamos um baseline, duas regressões logísticas e duas configurações de Random Forest. O modelo selecionado foi [MODELO], com limiar [LIMIAR]. No teste, a PR-AUC foi [PR_AUC], o recall da classe de risco foi [RECALL], a precisão foi [PRECISAO] e o Brier score foi [BRIER]. Em relação ao baseline, [RESUMIR GANHO].
+> Os estudantes foram separados em treino, validação e teste na proporção aproximada de 60, 20 e 20 por cento. A separação foi feita por município, então uma localidade não aparece em mais de uma partição. Comparamos um baseline, duas regressões logísticas e duas configurações de Random Forest. A regressão logística regularizada venceu. Em municípios nunca vistos, a ROC-AUC foi 0,661 e a PR-AUC foi 0,542, ganho relativo de 36,5% sobre a prevalência de risco. No limiar equilibrado de 0,515, a precisão foi 53,5% e o recall, 49,4%. Uma triagem de alta sensibilidade chega a 95% de recall, mas sinaliza quase 89% da base; por isso o escore contínuo é mais útil para ordenar prioridades.
 
 ## 2:50-3:35 - Interpretação
 
 **Tela:** `06_importancia_variaveis.png`.
 
-> As variáveis com maior importância preditiva foram [VARIAVEL 1], [VARIAVEL 2] e [VARIAVEL 3]. A importância foi calculada por permutação no conjunto de teste: quanto mais a PR-AUC cai ao embaralhar uma variável, maior sua contribuição. Esses resultados mostram associação, não causalidade. Também monitoramos a diferença entre treino e validação para identificar sobreajuste.
+> As variáveis com maior importância preditiva foram código da UF, média de Português de 2023 e taxa de alfabetização de 2023. Depois aparecem participação anterior e região. A importância foi calculada por permutação no conjunto de teste: quanto mais a PR-AUC cai ao embaralhar uma variável, maior sua contribuição. Isso mostra associação, não causalidade. Um diagnóstico que usou proficiência atingiu resultado perfeito justamente porque essa variável define o rótulo; ele demonstra o vazamento e foi excluído da solução.
 
 ## 3:35-4:20 - Inteligência municipal
 
 **Tela:** `07_ranking_municipios.png` e primeiras linhas do ranking.
 
-> Depois da previsão individual, agregamos as probabilidades por município. O ranking inclui risco médio, número de estudantes, intervalo de incerteza, taxa prevista de alfabetização e distância para a meta de 2025. Os municípios mais prioritários no conjunto de teste foram [MUNICIPIO 1], [MUNICIPIO 2] e [MUNICIPIO 3]. Também agrupamos municípios de contexto semelhante por clustering, permitindo desenhar carteiras de apoio com características próximas.
+> Depois da previsão, agregamos as probabilidades por município. O ranking inclui risco médio, número de estudantes, intervalo de incerteza, taxa prevista de alfabetização e distância para a meta de 2025. Para reduzir instabilidade, destacamos apenas localidades com pelo menos 30 registros no teste. As primeiras foram Senhor do Bonfim, Paulo Afonso e Pilão Arcado, na Bahia, seguidas de Santa Cruz, no Rio Grande do Norte, e Remanso, na Bahia. Também obtivemos três clusters de contexto, separando municípios com melhor histórico, histórico mais frágil e grandes centros.
 
 ## 4:20-4:55 - Valor público e limites
 
 **Tela:** resumo de recomendações.
 
-> A aplicação recomendada é usar o ranking para iniciar diagnóstico pedagógico, direcionar formação, materiais e acompanhamento, sempre com decisão humana. O modelo não deve reprovar alunos, punir escolas ou retirar recursos. Entre as limitações estão apenas dois anos de dados, atributos socioeconômicos agregados e possível viés de ausência na avaliação. A próxima validação deve ser temporal, usando 2025 como teste externo.
+> A aplicação recomendada é usar o ranking para iniciar diagnóstico pedagógico, direcionar formação, materiais e acompanhamento, sempre com decisão humana. Como os atributos são municipais, alunos da mesma localidade recebem o mesmo escore: ele não deve reprovar alunos, punir escolas ou retirar recursos. Entre as limitações estão apenas dois anos de dados, atributos agregados e possível viés de ausência. A próxima validação deve ser temporal, usando 2025 como teste externo.
 
 ## 4:55-5:00 - Encerramento
 
@@ -57,4 +57,3 @@ Preencha apenas os campos entre colchetes usando `reports/resultados_automaticos
 - Mostrar o repositório por cinco segundos, incluindo `src`, `sql`, `reports` e testes.
 - Não mostrar microdados, credenciais ou identificadores individuais.
 - Inserir o link do GitHub na descrição ou tela final.
-

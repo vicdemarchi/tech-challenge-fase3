@@ -5,6 +5,7 @@ from src.preprocessing.schema import (
     TARGET,
     assert_no_leakage,
     load_dataset,
+    normalize_known_units,
     prepare_target,
     select_features,
     validate_dataset,
@@ -31,7 +32,13 @@ class SchemaTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             assert_no_leakage(["regiao", "proficiencia"])
 
+    def test_known_pib_unit_is_corrected(self):
+        frame = load_dataset(FIXTURE)
+        frame.loc[:, "pib_per_capita_anterior"] = 52_000_000
+        corrected = normalize_known_units(frame)
+        self.assertEqual(float(corrected["pib_per_capita_anterior"].median()), 52_000)
+        self.assertTrue(corrected.attrs["unit_corrections"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

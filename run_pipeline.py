@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -12,13 +13,17 @@ import numpy as np
 import pandas as pd
 
 from src.evaluation.interpretability import permutation_feature_importance
-from src.evaluation.metrics import classification_metrics
+from src.evaluation.metrics import (
+    classification_metrics,
+    select_balanced_accuracy_threshold,
+)
 from src.modeling.clustering import cluster_municipalities
 from src.modeling.train import leakage_diagnostic, refit_selected, train_and_select
 from src.preprocessing.schema import (
     GROUP_COLUMN,
     TARGET,
     load_dataset,
+    normalize_known_units,
     prepare_target,
     select_features,
     validate_dataset,
@@ -27,12 +32,16 @@ from src.preprocessing.split import grouped_train_validation_test_split
 from src.visualization.plots import (
     plot_feature_importance,
     plot_missingness,
+    plot_correlation_matrix,
     plot_model_evaluation,
     plot_municipality_ranking,
     plot_numeric_distributions,
     plot_observed_risk_by_category,
     plot_target_distribution,
 )
+
+
+MINIMUM_MUNICIPAL_SAMPLE = 30
 
 
 def parse_args() -> argparse.Namespace:
@@ -79,7 +88,11 @@ def _assert_demo_safety(input_path: Path, demo: bool) -> None:
         )
 
 
-def _ranking(test: pd.DataFrame, probability: np.ndarray) -> pd.DataFrame:
+def _ranking(
+    test: pd.DataFrame,
+    probability: np.ndarray,
+    municipality_reference: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     columns = [GROUP_COLUMN, TARGET]
     optional = [
         "codigo_uf",
@@ -118,9 +131,61 @@ def _ranking(test: pd.DataFrame, probability: np.ndarray) -> pd.DataFrame:
             ranking["meta_alfabetizacao_2025"]
             - ranking["taxa_alfabetizacao_prevista"]
         )
+    ranking["amostra_suficiente"] = (
+        ranking["n_estudantes_teste"] >= MINIMUM_MUNICIPAL_SAMPLE
+    )
+    if municipality_reference is not None and not municipality_reference.empty:
+        reference = municipality_reference[[GROUP_COLUMN, "nome_municipio"]].copy()
+        reference[GROUP_COLUMN] = reference[GROUP_COLUMN].astype("string")
+        ranking[GROUP_COLUMN] = ranking[GROUP_COLUMN].astype("string")
+        ranking = ranking.merge(reference.drop_duplicates(GROUP_COLUMN), on=GROUP_COLUMN, how="left")
     return ranking.sort_values(
         ["risco_previsto", "n_estudantes_teste"], ascending=[False, False]
     ).reset_index(drop=True)
+
+
+def _load_municipality_reference(root: Path) -> pd.DataFrame | None:
+    path = root / "data" / "reference" / "municipios_ibge.csv"
+    if not path.exists():
+        return None
+    return pd.read_csv(path, dtype={GROUP_COLUMN: "string"})
+
+
+def _write_eda_tables(frame: pd.DataFrame, features: list[str], output_dir: Path) -> None:
+    numeric = [column for column in features if pd.api.types.is_numeric_dtype(frame[column])]
+    correlations = (
+        frame[numeric + [TARGET]]
+        .corr(method="spearman")[TARGET]
+        .drop(TARGET)
+        .rename("correlacao_spearman_com_risco")
+        .sort_values(ascending=False)
+        .reset_index()
+        .rename(columns={"index": "variavel"})
+    )
+    correlations.to_csv(output_dir / "correlacoes_spearman.csv", index=False)
+
+    quality = pd.DataFrame(
+        {
+            "variavel": frame.columns,
+            "nulos": [int(frame[column].isna().sum()) for column in frame.columns],
+            "percentual_nulos": [float(frame[column].isna().mean() * 100) for column in frame.columns],
+        }
+    ).sort_values("percentual_nulos", ascending=False)
+    quality.to_csv(output_dir / "qualidade_dados.csv", index=False)
+
+    for column in ["regiao", "sigla_uf"]:
+        if column in frame.columns:
+            summary = (
+                frame.groupby(column, dropna=False)
+                .agg(
+                    n_estudantes=(TARGET, "size"),
+                    n_municipios=(GROUP_COLUMN, "nunique"),
+                    risco_observado=(TARGET, "mean"),
+                )
+                .sort_values("risco_observado", ascending=False)
+                .reset_index()
+            )
+            summary.to_csv(output_dir / f"risco_por_{column}.csv", index=False)
 
 
 def _markdown_table(frame: pd.DataFrame, decimals: int = 4) -> str:
@@ -186,7 +251,9 @@ def main() -> None:
     root = Path(args.output_root).resolve() if args.output_root else repository_root
     paths = _directories(root, args.demo)
 
-    frame = prepare_target(load_dataset(input_path))
+    frame = normalize_known_units(load_dataset(input_path))
+    unit_corrections = list(frame.attrs.get("unit_corrections", []))
+    frame = prepare_target(frame)
     validate_dataset(frame)
     features = select_features(frame)
 
@@ -195,27 +262,50 @@ def main() -> None:
     plot_observed_risk_by_category(frame, "regiao", paths["images"])
     plot_observed_risk_by_category(frame, "rede_nome", paths["images"])
     plot_numeric_distributions(frame, features.numeric, paths["images"])
+    plot_correlation_matrix(frame, features.numeric + [TARGET], paths["images"])
+    _write_eda_tables(frame, features.numeric, paths["processed"])
 
     split = grouped_train_validation_test_split(frame)
     trained, validation_metrics = train_and_select(
         split.train, split.validation, features
     )
-    threshold = trained.threshold
+    threshold_high_recall = trained.threshold
+    validation_probability = trained.pipeline.predict_proba(
+        split.validation[features.all]
+    )[:, 1]
+    threshold_balanced = select_balanced_accuracy_threshold(
+        split.validation[TARGET].to_numpy(), validation_probability
+    )
     trained = refit_selected(trained, split.train, split.validation, features)
 
     probability = trained.pipeline.predict_proba(split.test[features.all])[:, 1]
-    test_metrics = classification_metrics(
-        split.test[TARGET].to_numpy(), probability, threshold
-    )
-    test_metrics.update({"modelo": trained.name, "limiar": threshold})
-    test_metrics_frame = pd.DataFrame([test_metrics])
+    test_metric_rows = []
+    for point, threshold in [
+        ("triagem_alta_sensibilidade", threshold_high_recall),
+        ("uso_equilibrado_recomendado", threshold_balanced),
+    ]:
+        metrics = classification_metrics(
+            split.test[TARGET].to_numpy(), probability, threshold
+        )
+        metrics.update(
+            {"modelo": trained.name, "ponto_operacao": point, "limiar": threshold}
+        )
+        test_metric_rows.append(metrics)
+    test_metrics_frame = pd.DataFrame(test_metric_rows)
+    test_metrics = test_metric_rows[1]
 
     predictions = split.test[
         [column for column in ["ano", GROUP_COLUMN, "id_aluno", TARGET] if column in split.test.columns]
     ].copy()
     predictions["probabilidade_risco"] = probability
-    predictions["predicao_risco"] = (probability >= threshold).astype(int)
-    ranking = _ranking(split.test, probability)
+    predictions["predicao_risco_alta_sensibilidade"] = (
+        probability >= threshold_high_recall
+    ).astype(int)
+    predictions["predicao_risco_equilibrado"] = (
+        probability >= threshold_balanced
+    ).astype(int)
+    ranking = _ranking(split.test, probability, _load_municipality_reference(root))
+    priority_ranking = ranking.loc[ranking["amostra_suficiente"]].reset_index(drop=True)
     importance = permutation_feature_importance(
         trained.pipeline, split.test[features.all], split.test[TARGET]
     )
@@ -225,6 +315,9 @@ def main() -> None:
     test_metrics_frame.to_csv(paths["processed"] / "metricas_teste.csv", index=False)
     predictions.to_csv(paths["processed"] / "predicoes_teste.csv", index=False)
     ranking.to_csv(paths["processed"] / "ranking_municipios.csv", index=False)
+    priority_ranking.to_csv(
+        paths["processed"] / "ranking_municipios_prioritarios.csv", index=False
+    )
     importance.to_csv(paths["processed"] / "importancia_variaveis.csv", index=False)
     if not clusters.empty:
         clusters.to_csv(paths["processed"] / "clusters_municipios.csv", index=False)
@@ -233,7 +326,10 @@ def main() -> None:
     joblib.dump(
         {
             "pipeline": trained.pipeline,
-            "threshold": threshold,
+            "thresholds": {
+                "triagem_alta_sensibilidade": threshold_high_recall,
+                "uso_equilibrado_recomendado": threshold_balanced,
+            },
             "features": features.all,
             "target": TARGET,
             "positive_class": "nao_alfabetizado",
@@ -247,7 +343,13 @@ def main() -> None:
         "n_municipalities": int(frame[GROUP_COLUMN].nunique()),
         "features": features.all,
         "selected_model": trained.name,
-        "threshold": threshold,
+        "thresholds": {
+            "triagem_alta_sensibilidade": threshold_high_recall,
+            "uso_equilibrado_recomendado": threshold_balanced,
+        },
+        "minimum_municipal_sample": MINIMUM_MUNICIPAL_SAMPLE,
+        "input_sha256": hashlib.sha256(input_path.read_bytes()).hexdigest(),
+        "unit_corrections": unit_corrections,
         "split_rows": {
             "train": int(len(split.train)),
             "validation": int(len(split.validation)),
@@ -265,16 +367,18 @@ def main() -> None:
             paths["processed"] / "diagnostico_vazamento.csv", index=False
         )
 
-    plot_model_evaluation(split.test[TARGET], probability, threshold, paths["images"])
+    plot_model_evaluation(
+        split.test[TARGET], probability, threshold_balanced, paths["images"]
+    )
     plot_feature_importance(importance, paths["images"])
-    plot_municipality_ranking(ranking, paths["images"])
+    plot_municipality_ranking(priority_ranking, paths["images"])
     _write_results_report(
         paths["reports"] / "resultados_automaticos.md",
         args.demo,
         features.all,
         validation_metrics,
         test_metrics_frame,
-        ranking,
+        priority_ranking,
         importance,
         leakage,
     )
@@ -286,4 +390,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

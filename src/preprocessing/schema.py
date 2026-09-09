@@ -76,6 +76,26 @@ def load_dataset(path: str | Path) -> pd.DataFrame:
     return frame
 
 
+def normalize_known_units(frame: pd.DataFrame) -> pd.DataFrame:
+    """Corrige unidades conhecidas de exportacoes anteriores e registra a decisao.
+
+    A versao inicial do SQL multiplicava o PIB por 1.000, embora a tabela publica
+    corrente ja o forneca em reais. Valores per capita com mediana acima de um
+    milhao sao, portanto, divididos por 1.000. O SQL atual ja sai correto.
+    """
+    output = frame.copy()
+    corrections: list[str] = []
+    column = "pib_per_capita_anterior"
+    if column in output.columns:
+        values = pd.to_numeric(output[column], errors="coerce")
+        median = values.median()
+        if pd.notna(median) and median > 1_000_000:
+            output[column] = values / 1_000
+            corrections.append("pib_per_capita_anterior_dividido_por_1000")
+    output.attrs["unit_corrections"] = corrections
+    return output
+
+
 def prepare_target(frame: pd.DataFrame) -> pd.DataFrame:
     """Cria o evento positivo de risco a partir do rotulo oficial."""
     if TARGET not in frame.columns:
@@ -130,4 +150,3 @@ def assert_no_leakage(columns: Iterable[str]) -> None:
     leaked = normalized.intersection(LEAKAGE_COLUMNS | {TARGET_SOURCE, TARGET})
     if leaked:
         raise ValueError(f"Colunas com vazamento nao podem ser preditores: {sorted(leaked)}")
-

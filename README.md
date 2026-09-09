@@ -4,7 +4,7 @@
 
 Este repositorio transforma a camada Gold da Fase 2 em uma solucao reproduzivel de Machine Learning para identificar estudantes e municipios com maior risco de nao alfabetizacao. O foco e apoiar priorizacao territorial e planejamento de politicas publicas, sem confundir predicao com causalidade.
 
-> Status dos resultados: o codigo e os testes estao prontos. As metricas finais devem ser geradas com o arquivo real exportado do BigQuery. Resultados do modo `--demo` servem apenas para teste tecnico e nunca devem ser apresentados como evidencia do projeto.
+> Status dos resultados: pipeline executado sobre a exportacao real de 160.978 registros e 5.350 municipios. A regressao logistica com `C=0,3` foi selecionada; no teste territorial obteve ROC-AUC de 0,661 e PR-AUC de 0,542. Resultados do modo `--demo` permanecem isolados e nunca sao usados como evidencia do projeto.
 
 ## 1. Problema e objetivo
 
@@ -59,8 +59,8 @@ O projeto permite um experimento diagnostico separado, executado com `--leakage-
 5. Padronizacao numerica e one-hot encoding dentro de `Pipeline`/`ColumnTransformer`.
 6. Comparacao de baseline majoritario, regressao logistica e Random Forest.
 7. Escolha por PR-AUC na validacao, adequada ao ranking da classe de risco.
-8. Escolha do limiar na validacao pela metrica F2, que da maior peso ao recall.
-9. Avaliacao unica no teste, seguida de importancia por permutacao e, quando disponivel, SHAP.
+8. Escolha de dois limiares na validacao: F2 para triagem ampla e acuracia balanceada para uso mais seletivo.
+9. Avaliacao unica no teste, seguida de importancia por permutacao e ranking municipal com amostra minima.
 
 A separacao agrupada testa generalizacao territorial. Como a base possui apenas 2023 e 2024 e os preditores historicos usam 2023, uma validacao temporal genuina deve ser repetida quando os rotulos de 2025 estiverem disponiveis.
 
@@ -95,6 +95,8 @@ data/raw/ml_alfabetizacao.csv
 
 O procedimento detalhado esta em `docs/como_exportar_bigquery.md`.
 
+O SQL atual calcula PIB per capita sem multiplicacao adicional. Para garantir reproducibilidade com exportacoes antigas, o carregador tambem detecta a assinatura de valores mil vezes maiores, corrige a unidade e registra a decisao em `data/processed/metadados_execucao.json`.
+
 ### 6.2 Instalar e executar
 
 ```bash
@@ -117,7 +119,9 @@ python run_pipeline.py --input tests/fixtures/amostra_teste_sintetica.csv --demo
 - `data/processed/metricas_validacao.csv` e `metricas_teste.csv`;
 - `data/processed/predicoes_teste.csv`;
 - `data/processed/ranking_municipios.csv`;
+- `data/processed/ranking_municipios_prioritarios.csv`, com pelo menos 30 registros por municipio;
 - `data/processed/importancia_variaveis.csv`;
+- `data/processed/correlacoes_spearman.csv`, `qualidade_dados.csv` e resumos por UF/regiao;
 - `data/processed/clusters_municipios.csv`;
 - figuras de EDA, matriz de confusao, ROC/PR, importancia e ranking em `images/`;
 - `reports/resultados_automaticos.md` com as tabelas prontas para incorporar ao relatorio final.
@@ -130,10 +134,25 @@ python run_pipeline.py --input tests/fixtures/amostra_teste_sintetica.csv --demo
 - **Meta futura:** a taxa prevista de alfabetizacao e comparada com a meta municipal de 2025; municipios com maior deficit entram primeiro na fila de diagnostico.
 - **Uso recomendado:** priorizar apoio pedagogico e investigacao local. Nunca negar recursos ou rotular definitivamente um aluno apenas com base no escore.
 
+### Resultado principal
+
+| Indicador no teste | Resultado |
+|---|---:|
+| Registros / municipios | 33.032 / 1.070 |
+| Prevalencia de risco | 39,7% |
+| ROC-AUC | 0,661 |
+| PR-AUC | 0,542 |
+| Ganho relativo de PR-AUC sobre a prevalencia | 36,5% |
+| Limiar equilibrado | 0,515 |
+| Precisao / recall no limiar equilibrado | 53,5% / 49,4% |
+
+Os atributos sao principalmente municipais. Assim, o escore serve para ordenar territorios e nao para diagnosticar individualmente estudantes. No ranking de teste com pelo menos 30 registros, as primeiras localidades foram Senhor do Bonfim (BA), Paulo Afonso (BA), Pilao Arcado (BA), Santa Cruz (RN) e Remanso (BA).
+
 ## 9. Limitacoes e etica
 
 - A base nao contem fatores individuais como renda familiar, deficiencia, lingua materna ou trajetoria escolar; variaveis municipais nao substituem essas informacoes.
 - O desenho e preditivo e observacional. Importancia de atributo nao prova causa.
+- Estudantes de um mesmo municipio recebem o mesmo escore nesta versao, pois nao ha atributos individuais seguros disponiveis.
 - Resultados podem refletir desigualdades historicas e diferencas de participacao na avaliacao.
 - A decisao final deve permanecer humana, com monitoramento por UF, regiao e rede.
 - A calibracao deve ser revista a cada nova edicao; 2025 e a primeira oportunidade de teste temporal real.
@@ -156,4 +175,3 @@ python run_pipeline.py --input tests/fixtures/amostra_teste_sintetica.csv --demo
 ## Equipe
 
 Preencher nomes e RM antes da entrega.
-

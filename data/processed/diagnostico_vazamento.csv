@@ -1,0 +1,2 @@
+n,prevalencia_risco,roc_auc,pr_auc,accuracy,balanced_accuracy,precision,recall,f1,f2,brier,taxa_alertas,verdadeiros_negativos,falsos_positivos,falsos_negativos,verdadeiros_positivos,modelo,limiar
+35869,0.41994479913016813,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,0.0002938071388344688,0.41994479913016813,20806,0,0,15063,diagnostico_com_proficiencia,0.4649999999999999
