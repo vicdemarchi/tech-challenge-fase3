@@ -1,0 +1,30 @@
+# Dados e artefatos gerados
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+models/*
+!models/.gitkeep
+images/*
+!images/.gitkeep
+!images/00_*.png
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Jupyter / IDE / sistema
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+demo_outputs/
+
+# Segredos
+.env
+*.jsonl
+*service-account*.json
