@@ -1,0 +1,11 @@
+indicador,valor
+registros_alunos,3867999
+registros_nao_aptos,513338
+linhas_gold_municipio,10951
+chaves_duplicadas_gold_municipio,0
+comparacoes_municipais_com_meta,5232
+municipios_atingiram_ou_superaram,2788
+municipios_abaixo_da_meta,2444
+regras_de_qualidade,59
+eventos_streaming_validados,5
+
