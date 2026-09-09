@@ -55,7 +55,7 @@ pib_2023 AS (
   WHERE ano = 2023
 ),
 diretorio AS (
-  SELECT id_municipio, sigla_uf, nome_regiao
+  SELECT id_municipio, nome AS nome_municipio, sigla_uf, nome_regiao
   FROM `basedosdados.br_bd_diretorios_brasil.municipio`
 )
 SELECT
@@ -64,6 +64,7 @@ SELECT
   -- Hash operacional para amostragem; o identificador original do aluno nao sai da Silver.
   FARM_FINGERPRINT(CONCAT(a.id_municipio, '|', a.id_aluno)) AS id_registro_hash,
   a.rede_nome,
+  d.nome_municipio,
   SUBSTR(a.id_municipio, 1, 2) AS codigo_uf,
   d.sigla_uf,
   d.nome_regiao AS regiao,
@@ -72,7 +73,7 @@ SELECT
   h.percentual_participacao_anterior,
   h.total_alunos_avaliados_anterior,
   pop.populacao AS populacao_anterior,
-  SAFE_DIVIDE(pib.pib * 1000, pop.populacao) AS pib_per_capita_anterior,
+  SAFE_DIVIDE(pib.pib, pop.populacao) AS pib_per_capita_anterior,
   m.meta_alfabetizacao_2025,
   a.peso_aluno,
   a.alfabetizado_bool,
@@ -98,4 +99,3 @@ SELECT
   ROUND(100 * COUNTIF(pib_per_capita_anterior IS NULL) / COUNT(*), 2)
     AS percentual_sem_pib_2023
 FROM `tech-alfabetizacao-vdemarchi.gold.ml_alfabetizacao_fase3`;
-

@@ -2,7 +2,7 @@
 
 ## Histórico local preparado
 
-O pacote inclui um repositório Git com commits separados por finalidade. Para a versão remota, crie um repositório vazio no GitHub e execute:
+O pacote inclui um repositório Git com commits separados por finalidade e merges das branches `feature/validacao-entrega` e `feature/resultados-reais`. Para a versão remota, crie um repositório vazio no GitHub e execute:
 
 ```bash
 git remote add origin URL_DO_REPOSITORIO
@@ -44,4 +44,3 @@ No GitHub, abra um pull request para `main` com:
 - `test:` testes;
 - `fix:` correção;
 - `chore:` manutenção.
-

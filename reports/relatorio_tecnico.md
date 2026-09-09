@@ -3,15 +3,17 @@
 **Tech Challenge - Fase 3**  
 **Curso:** Pós-graduação em Inteligência Artificial  
 **Equipe:** [preencher nomes e RM]  
-**Data:** [preencher]
+**Data:** 9 de setembro de 2026
 
-> Nota de integridade: a metodologia, o código e as evidências agregadas da Fase 2 estão concluídos. As métricas preditivas indicadas como "gerar com a base real" não foram inventadas; serão produzidas automaticamente após a exportação de `gold.ml_alfabetizacao_fase3` pelo SQL entregue no repositório. Resultados do modo sintético são bloqueados para uso acadêmico.
+> Nota de integridade: todas as métricas preditivas deste relatório foram calculadas sobre a exportação real `ml_alfabetizacao.csv`, com 160.978 registros. A execução é rastreável pelo SHA-256 `b0898f45a637626f20b2dfb855c0a87f4ef75e4f3761366c38246c64d42c0570`. Nenhum resultado sintético foi incorporado.
 
 ## Resumo executivo
 
 O objetivo deste trabalho é antecipar o risco de não alfabetização de estudantes do 2º ano do Ensino Fundamental e transformar as probabilidades individuais em inteligência territorial para priorização de municípios. A solução reutiliza a arquitetura Bronze, Silver e Gold da Fase 2, incorpora contexto educacional defasado e atributos socioeconômicos do IBGE, compara modelos supervisionados e produz um ranking municipal interpretável.
 
 A principal decisão metodológica foi excluir do modelo acionável a proficiência e qualquer indicador agregado do próprio resultado de 2024. Como a classificação oficial de alfabetização é definida pela proficiência, utilizar essa variável produziria um atalho circular, com aparência de excelente desempenho mas sem utilidade antes da avaliação. O modelo principal utiliza apenas informações de 2023, características territoriais estáveis e a meta de 2025.
+
+Na amostra real, a regressão logística regularizada foi o melhor candidato. No teste formado apenas por municípios não vistos, obteve ROC-AUC de 0,661 e PR-AUC de 0,542, frente a uma prevalência de risco de 0,397. Isso equivale a ganho absoluto de 0,145 e relativo de 36,5% sobre a referência aleatória da curva Precisão-Recall. O resultado indica capacidade moderada de ordenação territorial, não precisão suficiente para decisões individuais automáticas.
 
 A auditoria herdada da Fase 2 registra 3.867.999 linhas de estudantes, das quais 513.338 não estavam aptas à análise de desempenho. Restaram aproximadamente 3,35 milhões de registros aptos. A taxa nacional observada avançou de 55,9% em 2023 para 59,2% em 2024, aumento de 3,3 pontos percentuais, mas ficou 0,7 ponto abaixo da meta de 59,9%. Entre 5.232 comparações município-ano com meta, 2.788 (53,3%) atingiram ou superaram a referência e 2.444 (46,7%) ficaram abaixo. Esse quadro justifica uma ferramenta de triagem antecipada e territorial.
 
@@ -79,7 +81,13 @@ O ganho nacional pode coexistir com forte heterogeneidade. Nas 5.232 linhas muni
 
 A tabela Gold municipal possui 10.951 chaves distintas e nenhuma duplicidade. Foram executadas 59 regras de qualidade. A auditoria de relacionamento identificou, em 2023, 4.596 pares correspondentes com diferenças entre taxas provenientes das tabelas de meta e de resultado; em 2024, as 5.352 chaves correspondentes apresentaram taxas iguais. O modelo utiliza explicitamente `taxa_alfabetizacao_resultado` de 2023, mantendo uma única definição documentada.
 
-Também foram observadas 120 ausências de taxa ou participação municipal em 2023. O pipeline preserva os nulos e realiza imputação da mediana dentro de cada ajuste, evitando que estatísticas do teste contaminem o treino.
+Na exportação usada pelo modelo, as 160.978 linhas cobrem 5.350 municípios. Há 95.556 estudantes classificados como alfabetizados e 65.422 como não alfabetizados, correspondendo a 59,36% e 40,64%. A estimativa descritiva ponderada por `peso_aluno` é 58,85% de alfabetização; o modelo, voltado à classificação de cada registro observado, trata as linhas sem ponderação.
+
+Os maiores percentuais de ausência foram 19,04% em total de avaliados de 2023, 2,57% em participação anterior, 1,36% em meta de 2025 e 0,48% nas duas medidas anteriores de desempenho. O pipeline preserva os nulos e realiza imputação da mediana dentro de cada ajuste, evitando que estatísticas do teste contaminem o treino. Foram encontradas 646 linhas analiticamente idênticas; elas foram mantidas porque o identificador do estudante não foi exportado e estudantes diferentes podem compartilhar todos os atributos municipais e o mesmo desfecho.
+
+A primeira versão da consulta havia multiplicado o PIB per capita por mil, embora a tabela pública já fornecesse o PIB na unidade compatível com a divisão pela população. A mediana anômala, acima de R$ 41 milhões por habitante, revelou o problema. O SQL foi corrigido e o pipeline aplicou, de forma registrada, a divisão por mil ao arquivo já exportado. Após a correção, a mediana ficou em aproximadamente R$ 41,7 mil por habitante.
+
+![Dados ausentes na amostra de modelagem](../images/02_dados_ausentes.png)
 
 ### 3.4 Hipóteses analíticas
 
@@ -90,6 +98,10 @@ Também foram observadas 120 ausências de taxa ou participação municipal em 2
 - H5: um modelo não linear pode capturar interações, mas terá maior risco de sobreajuste que a regressão logística.
 
 As hipóteses são preditivas. A confirmação de associação não constitui evidência causal.
+
+A correlação de Spearman sustenta H1: risco de não alfabetização apresenta associação negativa de aproximadamente -0,255 com a média de Português anterior, -0,249 com a taxa de alfabetização anterior e -0,148 com a participação anterior. A taxa anterior, a média anterior e a meta de 2025 são fortemente correlacionadas entre si, o que exige cautela ao interpretar importância isolada.
+
+![Correlações entre atributos seguros e desfecho](../images/04_correlacoes_spearman.png)
 
 ## 4. Engenharia de atributos e vazamento
 
@@ -140,7 +152,7 @@ Foram preparados cinco candidatos:
 4. Random Forest com profundidade máxima 16 e folha mínima 10;
 5. Random Forest sem limite explícito de profundidade e folha mínima 20.
 
-A comparação de hiperparâmetros ocorre somente na validação. O modelo com maior PR-AUC, excluído o baseline, é reajustado em treino mais validação. O limiar é escolhido na validação pelo maior F2, que atribui peso maior ao recall da classe de risco. O teste é acessado uma única vez.
+A comparação de hiperparâmetros ocorre somente na validação. O modelo com maior PR-AUC, excluído o baseline, é reajustado em treino mais validação. Dois limiares são escolhidos exclusivamente na validação: o maior F2 para triagem de alta sensibilidade e a maior acurácia balanceada para um uso operacional mais seletivo. O teste é acessado uma única vez.
 
 ### 5.4 Métricas
 
@@ -158,18 +170,26 @@ O `gap_pr_auc` entre treino e validação é monitorado como sinal de sobreajust
 
 ### 6.1 Comparação na validação
 
-**Gerar com a base real:** copiar a tabela de `reports/resultados_automaticos.md` após executar o pipeline.
-
-| Modelo | PR-AUC | ROC-AUC | Recall | Precisão | F2 | Gap treino-validação |
+| Modelo | PR-AUC | ROC-AUC | Recall | Precisão | F2 | Gap PR-AUC |
 |---|---:|---:|---:|---:|---:|---:|
-| Baseline | a gerar | a gerar | a gerar | a gerar | a gerar | a gerar |
-| Melhor candidato | a gerar | a gerar | a gerar | a gerar | a gerar | a gerar |
+| Regressão logística, C=0,3 | 0,544 | 0,654 | 0,987 | 0,438 | 0,789 | 0,017 |
+| Regressão logística, C=1,0 | 0,544 | 0,654 | 0,987 | 0,438 | 0,789 | 0,017 |
+| Random Forest, profundidade 16 | 0,541 | 0,653 | 0,987 | 0,438 | 0,789 | 0,059 |
+| Random Forest, folha mínima 20 | 0,541 | 0,653 | 0,984 | 0,440 | 0,789 | 0,057 |
+| Baseline de prevalência | 0,420 | 0,500 | 1,000 | 0,420 | 0,784 | -0,016 |
+
+A regressão logística com `C=0,3` venceu por pequena margem de PR-AUC e apresentou gap treino-validação menor que as Random Forests. A proximidade entre os candidatos mostra que o limite principal está na informação disponível, composta quase integralmente por contexto municipal, e não na falta de complexidade algorítmica.
 
 ### 6.2 Avaliação final no teste
 
-**Gerar com a base real:** inserir o modelo selecionado, o limiar e as métricas de `data/processed/metricas_teste.csv`.
+| Ponto de operação | Limiar | Alertas | Acc. | Acc. bal. | Precisão | Recall | F2 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Triagem de alta sensibilidade | 0,230 | 88,8% | 46,9% | 55,1% | 42,5% | 95,0% | 76,2% |
+| Uso equilibrado recomendado | 0,515 | 36,6% | 62,8% | 60,5% | 53,5% | 49,4% | 50,1% |
 
-Nenhuma métrica sintética foi transcrita para este documento. Essa escolha preserva a validade do trabalho e permite rastrear cada número até o arquivo real de entrada.
+Em ambos os pontos, ROC-AUC = 0,661, PR-AUC = 0,542 e Brier = 0,225, pois essas métricas avaliam as probabilidades e não dependem do corte. No ponto equilibrado, 12.106 de 33.032 registros recebem alerta: são 6.479 verdadeiros positivos, 5.627 falsos positivos, 6.647 falsos negativos e 14.279 verdadeiros negativos. Na triagem ampla, o recall sobe para 95,0%, mas 29.336 registros seriam sinalizados. Por isso, a recomendação principal é utilizar o escore contínuo como ranking territorial; o limiar deve refletir a capacidade real de atendimento.
+
+![Curvas e matriz de confusão no teste territorial](../images/05_avaliacao_modelo.png)
 
 ### 6.3 Interpretação
 
@@ -178,19 +198,41 @@ A importância por permutação mede a queda de PR-AUC quando cada atributo é e
 1. importância não prova causalidade;
 2. atributos correlacionados podem dividir importância entre si.
 
-**Gerar com a base real:** inserir `images/06_importancia_variaveis.png` e discutir as cinco primeiras variáveis.
+![Importância global por permutação](../images/06_importancia_variaveis.png)
+
+O código da UF foi o atributo mais importante, com queda média de 0,033 na PR-AUC quando embaralhado. Em seguida aparecem média de Português de 2023, com 0,026, e taxa de alfabetização anterior, com 0,018. Participação anterior e região acrescentam informação menor. Valores próximos de zero ou negativos para meta, PIB per capita, população e quantidade avaliada significam ausência de ganho incremental estável neste teste, e não efeito causal negativo.
+
+Como verificação de vazamento, um modelo diagnóstico que recebeu somente `proficiencia` alcançou ROC-AUC e PR-AUC iguais a 1,000. O resultado perfeito confirma que a variável contém a resposta e deve permanecer proibida no modelo acionável.
 
 ## 7. Inteligência municipal
 
 ### 7.1 Ranking de risco
 
-As probabilidades individuais do teste são agregadas por município. Para cada localidade, a solução entrega risco médio, taxa prevista de alfabetização, intervalo aproximado de 95%, número de estudantes e déficit para a meta de 2025. O ranking prioriza o maior risco, mas o tamanho amostral e a incerteza devem ser considerados antes da ação.
+As probabilidades do teste são agregadas por município. Para cada localidade, a solução entrega risco médio, taxa prevista de alfabetização, intervalo aproximado de 95%, número de estudantes e déficit para a meta de 2025. Como os atributos disponíveis são municipais, todos os estudantes da mesma localidade recebem o mesmo escore; portanto, o produto deve ser interpretado como triagem territorial, não diagnóstico individual.
 
-**Gerar com a base real:** inserir `images/07_ranking_municipios.png` e os primeiros municípios de `ranking_municipios.csv`.
+O ranking bruto contém 1.070 municípios de teste. Para reduzir instabilidade, a lista principal exige ao menos 30 estudantes na amostra, critério atendido por 215 municípios. Os cinco primeiros são:
+
+| Município | UF | n no teste | Risco previsto | Risco observado | Déficit para meta |
+|---|---|---:|---:|---:|---:|
+| Senhor do Bonfim | BA | 58 | 81,3% | 77,6% | 16,8 p.p. |
+| Paulo Afonso | BA | 99 | 80,6% | 67,7% | 20,8 p.p. |
+| Pilão Arcado | BA | 40 | 79,6% | 77,5% | 19,0 p.p. |
+| Santa Cruz | RN | 38 | 78,4% | 55,3% | 15,3 p.p. |
+| Remanso | BA | 36 | 77,9% | 52,8% | 18,4 p.p. |
+
+![Municípios prioritários com amostra mínima](../images/07_ranking_municipios.png)
+
+Esses nomes não formam uma sentença definitiva: indicam onde iniciar uma investigação. Diferenças entre risco previsto e observado, como em Santa Cruz e Remanso, reforçam que o modelo é moderado e que o contexto local deve prevalecer.
 
 ### 7.2 Municípios semelhantes
 
-O módulo não supervisionado agrega atributos contextuais por município, padroniza as variáveis e testa de dois a cinco clusters. O número de grupos é escolhido pelo maior silhouette score. Como o alvo de 2024 não entra nessa etapa, os clusters descrevem contexto, não desempenho corrente.
+O módulo não supervisionado agrega atributos contextuais por município, padroniza as variáveis e testa de dois a cinco clusters. O número de grupos é escolhido pelo maior silhouette score. Como o alvo de 2024 não entra nessa etapa, os clusters descrevem contexto, não desempenho corrente. A solução escolheu três grupos, com silhouette de 0,339:
+
+| Cluster | Municípios | Síntese do perfil |
+|---|---:|---|
+| 0 | 2.900 | desempenho e participação anteriores mais altos; municípios menores |
+| 1 | 2.443 | desempenho anterior mais baixo e menor PIB per capita médio |
+| 2 | 7 | grandes centros, com população média de 4,09 milhões e escala educacional muito maior |
 
 O uso sugerido é criar carteiras de intervenção: municípios de um mesmo perfil podem compartilhar diagnóstico e desenho de apoio, desde que análises locais confirmem a semelhança.
 
@@ -202,13 +244,11 @@ A taxa prevista é calculada como `100 x (1 - risco_medio)`. O déficit é `meta
 
 | Pergunta | Resposta entregue pela solução |
 |---|---|
-| Fatores de maior impacto | ranking de importância por permutação, acompanhado de direção da regressão logística e análise de SHAP opcional |
-| Municípios em risco | ranking probabilístico agregado com tamanho amostral e intervalo de incerteza |
-| Regiões com padrões semelhantes | clusters contextuais e perfis médios por grupo |
-| Municípios sem resultado futuro | taxa prevista e déficit em relação à meta de 2025 |
-| Influência das variáveis | comparação entre importância global e desempenho do modelo sem vazamento |
-
-Os nomes e valores concretos dependem da execução com os microdados reais. O repositório produz todas as tabelas sem edição manual.
+| Fatores de maior impacto | UF, média de Português anterior, taxa de alfabetização anterior, participação e região lideraram a importância preditiva |
+| Municípios em risco | Senhor do Bonfim, Paulo Afonso, Pilão Arcado, Santa Cruz e Remanso lideraram a lista com amostra mínima no teste |
+| Regiões com padrões semelhantes | três clusters separam municípios de melhor histórico, histórico mais frágil e grandes centros |
+| Municípios sem resultado futuro | risco médio foi convertido em taxa prevista e comparado à meta municipal de 2025 |
+| Influência das variáveis | importância por permutação no teste e diagnóstico de vazamento permitem distinguir sinal útil de resposta circular |
 
 ## 9. Aplicação em políticas públicas
 
@@ -228,15 +268,19 @@ O escore não deve decidir matrícula, promoção, sanção, transferência de r
 
 - A base tem apenas dois anos úteis para o desenho proposto.
 - Atributos socioeconômicos são municipais e podem ocultar desigualdade interna.
+- A ausência de atributos individuais faz o escore variar entre municípios, não entre estudantes da mesma localidade.
 - Estudantes ausentes ou sem prova preenchida não possuem desfecho observado.
 - O split territorial é rigoroso, mas não substitui validação temporal.
 - A amostra local reduz custo computacional, embora preserve a prevalência por hash.
+- Apenas 215 municípios de teste possuem pelo menos 30 registros; rankings de localidades menores são mais instáveis.
+- O intervalo apresentado é uma aproximação binomial e não incorpora toda a incerteza do modelo.
+- `peso_aluno` foi usado em auditoria descritiva, mas não no ajuste desta versão.
 - Mudanças de instrumento, política ou população podem causar drift.
 - As associações não identificam efeito causal de uma intervenção.
 
 ## 11. Conclusão
 
-O projeto entrega uma arquitetura preditiva reproduzível e alinhada ao uso público: dados defasados no tempo, proteção automatizada contra vazamento, comparação de modelos, escolha de limiar orientada ao risco, teste territorial e interpretação agregada. As evidências da Fase 2 mostram melhora nacional, mas também uma parcela expressiva de municípios abaixo das metas. A contribuição do modelo é transformar esse diagnóstico retrospectivo em uma fila de investigação antecipada, com incerteza e supervisão humana explícitas.
+O projeto entrega uma arquitetura preditiva reproduzível e alinhada ao uso público: dados defasados no tempo, proteção automatizada contra vazamento, comparação de modelos, dois limiares operacionais, teste territorial e interpretação agregada. A regressão logística obteve discriminação moderada e ganho relevante de PR-AUC sobre a prevalência, mas não sustenta automação individual. Sua contribuição prática é transformar diagnóstico retrospectivo em uma fila transparente de investigação municipal, acompanhada de tamanho amostral, incerteza, limitações e supervisão humana explícitas.
 
 ## Referências
 
@@ -245,4 +289,3 @@ O projeto entrega uma arquitetura preditiva reproduzível e alinhada ao uso púb
 - BASE DOS DADOS. População Brasileira. Disponível em: https://basedosdados.org/dataset/d30222ad-7a5c-4778-a1ec-f0785371d1ca.
 - BASE DOS DADOS. Produto Interno Bruto (PIB). Disponível em: https://basedosdados.org/dataset/fcf025ca-8b19-4131-8e2d-5ddb12492347.
 - SCIKIT-LEARN DEVELOPERS. Scikit-learn User Guide. Disponível em: https://scikit-learn.org/stable/user_guide.html.
-

@@ -30,11 +30,11 @@
 - Motivo: evitar memorização contextual e testar generalização territorial.
 - Consequência: a tarefa é mais difícil e representa municípios não vistos.
 
-## DA-06 - Seleção por PR-AUC e limiar por F2
+## DA-06 - Seleção por PR-AUC e dois pontos de operação
 
-- Decisão: PR-AUC escolhe o modelo; F2 escolhe o limiar na validação.
-- Motivo: qualidade do ranking e prioridade de recall.
-- Consequência: o limiar pode ser ajustado futuramente à capacidade operacional, sem retreinar.
+- Decisão: PR-AUC escolhe o modelo; F2 define a triagem ampla e acurácia balanceada define o ponto recomendado.
+- Motivo: separar a qualidade do ranking da capacidade operacional de atendimento.
+- Consequência: o limiar de 0,230 maximiza sensibilidade, mas sinaliza 88,8% do teste; o limiar de 0,515 oferece uso mais seletivo.
 
 ## DA-07 - Importância não causal
 
@@ -46,5 +46,16 @@
 
 - Decisão: isolar saídas sintéticas em `demo_outputs/` e marcar o relatório.
 - Motivo: testar reprodutibilidade sem falsificar resultado acadêmico.
-- Consequência: a entrega final precisa dos arquivos produzidos com a exportação real.
+- Consequência: a entrega final usa somente os arquivos produzidos com a exportação real.
 
+## DA-09 - Correção da unidade do PIB per capita
+
+- Decisão: remover a multiplicação por mil do SQL e normalizar exportações antigas quando a mediana superar R$ 1 milhão.
+- Motivo: o valor municipal de PIB já está na unidade necessária para a divisão pela população.
+- Consequência: a correção aplicada ao arquivo desta entrega ficou registrada nos metadados.
+
+## DA-10 - Ranking municipal com amostra mínima
+
+- Decisão: manter o ranking completo e publicar como prioritários apenas municípios com 30 ou mais registros no teste.
+- Motivo: reduzir destaque indevido a probabilidades baseadas em amostras muito pequenas.
+- Consequência: 215 dos 1.070 municípios de teste compõem a lista principal.

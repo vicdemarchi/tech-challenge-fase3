@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import html
 import re
+import shutil
 from pathlib import Path
 
 from PIL import Image as PILImage
@@ -32,7 +33,8 @@ from reportlab.platypus import (
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "reports" / "relatorio_tecnico.md"
-OUTPUT = ROOT / "reports" / "relatorio_tecnico.pdf"
+OUTPUT = ROOT / "output" / "pdf" / "relatorio_tecnico_fase3.pdf"
+REPORT_COPY = ROOT / "reports" / "relatorio_tecnico.pdf"
 
 NAVY = colors.HexColor("#123047")
 TEAL = colors.HexColor("#0F766E")
@@ -326,6 +328,7 @@ def build() -> None:
     register_fonts()
     global STYLES
     STYLES = make_styles()
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     document = SimpleDocTemplate(
         str(OUTPUT),
         pagesize=A4,
@@ -355,8 +358,8 @@ def build() -> None:
             [
                 [Paragraph("CURSO", STYLES["table_header"]), Paragraph("Pós-graduação em Inteligência Artificial", STYLES["table_cell"])],
                 [Paragraph("EQUIPE", STYLES["table_header"]), Paragraph("[preencher nomes e RM]", STYLES["table_cell"])],
-                [Paragraph("DATA", STYLES["table_header"]), Paragraph("[preencher]", STYLES["table_cell"])],
-                [Paragraph("VERSÃO", STYLES["table_header"]), Paragraph("1.0 - metodologia e evidências consolidadas", STYLES["table_cell"])],
+                [Paragraph("DATA", STYLES["table_header"]), Paragraph("9 de setembro de 2026", STYLES["table_cell"])],
+                [Paragraph("VERSÃO", STYLES["table_header"]), Paragraph("2.0 - resultados reais consolidados", STYLES["table_cell"])],
             ],
             colWidths=[3.0 * cm, available_width - 3.0 * cm],
             style=TableStyle(
@@ -374,7 +377,7 @@ def build() -> None:
         ),
         Spacer(1, 1.25 * cm),
         Paragraph(
-            "NOTA DE INTEGRIDADE | Métricas preditivas não são simuladas. Os campos sinalizados no relatório serão preenchidos pela execução com a exportação real do BigQuery.",
+            "NOTA DE INTEGRIDADE | Todas as métricas preditivas foram calculadas sobre a exportação real de 160.978 registros. Resultados sintéticos não foram usados.",
             STYLES["callout"],
         ),
         Spacer(1, 1.0 * cm),
@@ -389,6 +392,8 @@ def build() -> None:
     start = next(index for index, line in enumerate(source_lines) if line == "## Resumo executivo")
     story.extend(parse_markdown(source_lines[start:], available_width))
     document.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    REPORT_COPY.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(OUTPUT, REPORT_COPY)
     print(f"PDF criado: {OUTPUT}")
 
 

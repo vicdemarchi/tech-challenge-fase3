@@ -19,14 +19,13 @@
 ## Necessário antes da submissão
 
 - [ ] Preencher nomes, RM e data na capa.
-- [ ] Executar `sql/01_criar_tabela_ml.sql` no BigQuery.
-- [ ] Confirmar zero falhas em `sql/03_auditar_tabela_ml.sql`.
-- [ ] Exportar `ml_alfabetizacao.csv` e executar o pipeline real.
-- [ ] Substituir as tabelas "a gerar" no relatório pelas métricas reais.
-- [ ] Inserir os gráficos reais de avaliação, importância e ranking.
-- [ ] Atualizar o PDF do relatório.
+- [x] Executar `sql/01_criar_tabela_ml.sql` no BigQuery.
+- [x] Confirmar zero falhas em `sql/03_auditar_tabela_ml.sql`.
+- [x] Exportar `ml_alfabetizacao.csv` e executar o pipeline real.
+- [x] Substituir as tabelas provisórias pelas métricas reais.
+- [x] Inserir os gráficos reais de avaliação, importância e ranking.
+- [x] Atualizar e revisar visualmente o PDF do relatório.
 - [ ] Gravar o vídeo com duração máxima de cinco minutos.
 - [ ] Criar o repositório remoto, branch e pull request.
-- [ ] Confirmar que nenhum microdado, identificador ou segredo foi publicado.
-- [ ] Abrir o ZIP final em outro diretório e repetir os testes.
-
+- [x] Confirmar que nenhum microdado, identificador ou segredo foi publicado.
+- [x] Abrir o ZIP final em outro diretório e repetir os testes.

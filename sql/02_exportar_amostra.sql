@@ -5,6 +5,7 @@
 SELECT
   ano,
   id_municipio,
+  nome_municipio,
   rede_nome,
   codigo_uf,
   sigla_uf,

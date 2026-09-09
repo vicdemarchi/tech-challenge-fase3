@@ -1,0 +1,33 @@
+{
+  "demo": false,
+  "input": "/workspace/scratch/b7bfa8606a1d/upload/ml_alfabetizacao.csv",
+  "n_rows": 160978,
+  "n_municipalities": 5350,
+  "features": [
+    "taxa_alfabetizacao_anterior",
+    "media_portugues_anterior",
+    "percentual_participacao_anterior",
+    "total_alunos_avaliados_anterior",
+    "populacao_anterior",
+    "pib_per_capita_anterior",
+    "meta_alfabetizacao_2025",
+    "rede_nome",
+    "codigo_uf",
+    "regiao"
+  ],
+  "selected_model": "regressao_logistica_c0_3",
+  "thresholds": {
+    "triagem_alta_sensibilidade": 0.22999999999999998,
+    "uso_equilibrado_recomendado": 0.5149999999999999
+  },
+  "minimum_municipal_sample": 30,
+  "input_sha256": "b0898f45a637626f20b2dfb855c0a87f4ef75e4f3761366c38246c64d42c0570",
+  "unit_corrections": [
+    "pib_per_capita_anterior_dividido_por_1000"
+  ],
+  "split_rows": {
+    "train": 92077,
+    "validation": 35869,
+    "test": 33032
+  }
+}

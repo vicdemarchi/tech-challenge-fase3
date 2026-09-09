@@ -24,6 +24,20 @@ ORANGE = "#EA580C"
 RED = "#B91C1C"
 GRAY = "#64748B"
 
+DISPLAY_NAMES = {
+    "codigo_uf": "UF",
+    "media_portugues_anterior": "Média de Português anterior",
+    "taxa_alfabetizacao_anterior": "Taxa de alfabetização anterior",
+    "percentual_participacao_anterior": "Participação anterior",
+    "total_alunos_avaliados_anterior": "Avaliados no ano anterior",
+    "populacao_anterior": "População anterior",
+    "pib_per_capita_anterior": "PIB per capita anterior",
+    "meta_alfabetizacao_2025": "Meta de alfabetização 2025",
+    "rede_nome": "Rede",
+    "regiao": "Região",
+    "nao_alfabetizado": "Não alfabetizado",
+}
+
 
 def _style() -> None:
     sns.set_theme(style="whitegrid", context="notebook")
@@ -112,6 +126,41 @@ def plot_numeric_distributions(
     _save(fig, output_dir / "04_distribuicoes_numericas.png")
 
 
+def plot_correlation_matrix(
+    frame: pd.DataFrame, columns: list[str], output_dir: Path
+) -> None:
+    """Exibe associacoes monotônicas sem incluir a proficiencia vazada."""
+    usable = [column for column in columns if column in frame.columns]
+    usable = [column for column in usable if frame[column].notna().any()]
+    if len(usable) < 2:
+        return
+    _style()
+    labels = [DISPLAY_NAMES.get(column, column.replace("_", " ")) for column in usable]
+    correlation = frame[usable].corr(method="spearman")
+    fig, ax = plt.subplots(figsize=(10.5, 8.2))
+    sns.heatmap(
+        correlation,
+        cmap="vlag",
+        center=0,
+        vmin=-1,
+        vmax=1,
+        square=True,
+        linewidths=0.5,
+        annot=True,
+        fmt=".2f",
+        annot_kws={"fontsize": 7},
+        xticklabels=labels,
+        yticklabels=labels,
+        cbar_kws={"label": "Correlação de Spearman", "shrink": 0.75},
+        ax=ax,
+    )
+    ax.set_title("Correlações entre atributos seguros e desfecho")
+    ax.tick_params(axis="x", labelrotation=42, labelsize=8)
+    ax.tick_params(axis="y", labelrotation=0, labelsize=8)
+    fig.tight_layout()
+    _save(fig, output_dir / "04_correlacoes_spearman.png")
+
+
 def plot_model_evaluation(
     y_true: pd.Series,
     probability: np.ndarray,
@@ -121,12 +170,18 @@ def plot_model_evaluation(
     _style()
     prediction = (probability >= threshold).astype(int)
     fig, axes = plt.subplots(1, 3, figsize=(14, 4.1))
-    RocCurveDisplay.from_predictions(y_true, probability, color=BLUE, ax=axes[0])
+    RocCurveDisplay.from_predictions(
+        y_true, probability, color=BLUE, name="Modelo", ax=axes[0]
+    )
     axes[0].set_title("Curva ROC")
+    axes[0].set_xlabel("Taxa de falsos positivos")
+    axes[0].set_ylabel("Taxa de verdadeiros positivos")
     PrecisionRecallDisplay.from_predictions(
-        y_true, probability, color=ORANGE, ax=axes[1]
+        y_true, probability, color=ORANGE, name="Modelo", ax=axes[1]
     )
     axes[1].set_title("Curva Precisao-Recall")
+    axes[1].set_xlabel("Recall")
+    axes[1].set_ylabel("Precisão")
     ConfusionMatrixDisplay.from_predictions(
         y_true,
         prediction,
@@ -135,7 +190,9 @@ def plot_model_evaluation(
         colorbar=False,
         ax=axes[2],
     )
-    axes[2].set_title(f"Matriz de confusao (limiar={threshold:.2f})")
+    axes[2].set_title(f"Matriz de confusao (limiar={threshold:.3f})")
+    axes[2].set_xlabel("Classe prevista")
+    axes[2].set_ylabel("Classe real")
     fig.tight_layout()
     _save(fig, output_dir / "05_avaliacao_modelo.png")
 
@@ -146,7 +203,8 @@ def plot_feature_importance(importance: pd.DataFrame, output_dir: Path) -> None:
     _style()
     top = importance.head(15).sort_values("importancia_media")
     fig, ax = plt.subplots(figsize=(8.5, max(4.2, len(top) * 0.42)))
-    ax.barh(top["variavel"], top["importancia_media"], color=BLUE)
+    labels = top["variavel"].map(lambda value: DISPLAY_NAMES.get(value, value))
+    ax.barh(labels, top["importancia_media"], color=BLUE)
     ax.set_title("Importancia por permutacao")
     ax.set_xlabel("Queda media de PR-AUC")
     _save(fig, output_dir / "06_importancia_variaveis.png")
@@ -156,11 +214,15 @@ def plot_municipality_ranking(ranking: pd.DataFrame, output_dir: Path) -> None:
     if ranking.empty:
         return
     _style()
-    top = ranking.head(20).sort_values("risco_previsto")
+    eligible = ranking
+    if "amostra_suficiente" in ranking.columns:
+        eligible = ranking.loc[ranking["amostra_suficiente"]]
+    top = eligible.head(20).sort_values("risco_previsto")
     fig, ax = plt.subplots(figsize=(9, 7))
-    ax.barh(top["id_municipio"].astype(str), top["risco_previsto"] * 100, color=RED)
-    ax.set_title("Municipios com maior risco previsto no conjunto de teste")
+    label_column = "nome_municipio" if "nome_municipio" in top.columns else "id_municipio"
+    labels = top[label_column].fillna(top["id_municipio"]).astype(str)
+    ax.barh(labels, top["risco_previsto"] * 100, color=RED)
+    ax.set_title("Municípios prioritários no conjunto de teste")
     ax.set_xlabel("Probabilidade media de nao alfabetizacao (%)")
-    ax.set_ylabel("Codigo IBGE do municipio")
+    ax.set_ylabel("Município" if label_column == "nome_municipio" else "Código IBGE")
     _save(fig, output_dir / "07_ranking_municipios.png")
-

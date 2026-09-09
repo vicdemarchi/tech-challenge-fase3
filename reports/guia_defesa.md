@@ -26,7 +26,19 @@ Ela avalia a qualidade do ranking da classe positiva e é mais informativa que a
 
 ## Por que F2 para o limiar?
 
-F2 dá mais peso ao recall. Em triagem para apoio, deixar um estudante em risco sem alerta pode ser mais custoso que investigar um falso positivo, desde que a capacidade de atendimento seja observada.
+F2 dá mais peso ao recall. Em triagem para apoio, deixar um caso de risco sem alerta pode ser mais custoso que investigar um falso positivo. Como o maior F2 sinalizou 88,8% do teste, o projeto também fornece um limiar equilibrado de 0,515; a gestão escolhe o ponto conforme sua capacidade.
+
+## O resultado do modelo foi bom?
+
+Foi moderado e melhor que o acaso: ROC-AUC de 0,661 e PR-AUC de 0,542 contra prevalência de 0,397 no teste. Isso sustenta ranking territorial, mas não decisão individual automática. A honestidade dessa conclusão é uma força metodológica.
+
+## Quais fatores e municípios se destacaram?
+
+Código da UF, média de Português anterior e taxa de alfabetização anterior lideraram a importância. Com ao menos 30 registros no teste, Senhor do Bonfim, Paulo Afonso, Pilão Arcado, Santa Cruz e Remanso lideraram o risco previsto.
+
+## Por que estudantes do mesmo município recebem o mesmo escore?
+
+Os atributos seguros disponíveis são municipais. A linha é de estudante, mas não há variáveis individuais anteriores à prova. Por isso, esta versão deve ser defendida como triagem territorial; uma evolução incorporaria frequência, trajetória e contexto individual com governança adequada.
 
 ## O modelo mostra causas?
 
@@ -47,4 +59,3 @@ Combinar risco, incerteza, tamanho da amostra e contexto local; revisar por UF e
 ## Qual é o próximo passo técnico?
 
 Quando o resultado de 2025 estiver disponível, executar validação temporal externa, recalibrar probabilidades e comparar estabilidade dos atributos.
-
