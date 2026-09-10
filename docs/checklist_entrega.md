@@ -18,7 +18,7 @@
 
 ## Necessário antes da submissão
 
-- [ ] Preencher nomes, RM e data na capa.
+- [x] Confirmar nome da integrante, grupo e data na capa.
 - [x] Executar `sql/01_criar_tabela_ml.sql` no BigQuery.
 - [x] Confirmar zero falhas em `sql/03_auditar_tabela_ml.sql`.
 - [x] Exportar `ml_alfabetizacao.csv` e executar o pipeline real.

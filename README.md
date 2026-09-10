@@ -174,4 +174,4 @@ Os atributos sao principalmente municipais. Assim, o escore serve para ordenar t
 
 ## Equipe
 
-Preencher nomes e RM antes da entrega.
+Viviane Demarchi — Grupo 143.

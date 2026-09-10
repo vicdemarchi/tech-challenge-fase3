@@ -2,7 +2,8 @@
 
 **Tech Challenge - Fase 3**  
 **Curso:** Pós-graduação em Inteligência Artificial  
-**Equipe:** [preencher nomes e RM]  
+**Integrante:** Viviane Demarchi  
+**Grupo:** 143  
 **Data:** 9 de setembro de 2026
 
 > Nota de integridade: todas as métricas preditivas deste relatório foram calculadas sobre a exportação real `ml_alfabetizacao.csv`, com 160.978 registros. A execução é rastreável pelo SHA-256 `b0898f45a637626f20b2dfb855c0a87f4ef75e4f3761366c38246c64d42c0570`. Nenhum resultado sintético foi incorporado.

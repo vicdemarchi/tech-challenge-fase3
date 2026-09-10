@@ -357,7 +357,8 @@ def build() -> None:
         Table(
             [
                 [Paragraph("CURSO", STYLES["table_header"]), Paragraph("Pós-graduação em Inteligência Artificial", STYLES["table_cell"])],
-                [Paragraph("EQUIPE", STYLES["table_header"]), Paragraph("[preencher nomes e RM]", STYLES["table_cell"])],
+                [Paragraph("INTEGRANTE", STYLES["table_header"]), Paragraph("Viviane Demarchi", STYLES["table_cell"])],
+                [Paragraph("GRUPO", STYLES["table_header"]), Paragraph("143", STYLES["table_cell"])],
                 [Paragraph("DATA", STYLES["table_header"]), Paragraph("9 de setembro de 2026", STYLES["table_cell"])],
                 [Paragraph("VERSÃO", STYLES["table_header"]), Paragraph("2.0 - resultados reais consolidados", STYLES["table_cell"])],
             ],

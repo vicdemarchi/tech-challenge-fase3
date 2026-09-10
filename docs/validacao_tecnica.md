@@ -38,4 +38,4 @@ O PDF técnico foi renderizado em A4 e revisado visualmente após a conversão d
 
 ## Validação manual restante
 
-Preencher nomes e RM, gravar o vídeo executivo e publicar o repositório por uma conta GitHub escolhida pela equipe.
+Gravar o vídeo executivo e publicar o repositório por uma conta GitHub escolhida pela integrante.
