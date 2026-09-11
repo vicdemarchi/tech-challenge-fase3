@@ -1,5 +1,7 @@
 # Checklist final de entrega
 
+> Revisão final: antes do envio, abra o PDF e confirme identificação, grupo, legibilidade dos gráficos e duração máxima de cinco minutos para o vídeo.
+
 ## Concluído no pacote
 
 - [x] Estrutura de repositório organizada.
